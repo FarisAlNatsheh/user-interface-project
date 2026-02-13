@@ -8,6 +8,9 @@ type AlertItem = {
   anchorId?: string;
   title: string;
   message: string;
+  explanation: string;
+  technicalDetails: string[];
+  remediationSteps: string[];
   severity: Severity;
   source?: string;
   createdAt: string; // display label like "3m ago" / "2026-02-13 14:02"
@@ -21,6 +24,15 @@ const MOCK_ALERTS: AlertItem[] = [
     title: 'FILE "GCS" NOT FOUND',
     message:
       "The application couldn't locate the required file. Verify it exists and the configured path is correct.",
+    explanation: "Missing file access in the LOCAL environment is blocking sync operations.",
+    technicalDetails: [
+      "Path lookup failed for /Users/natsheh/.config/gcs.json",
+      "Last successful read: 2026-02-13 13:59",
+    ],
+    remediationSteps: [
+      "Confirm the file exists and permissions allow read access.",
+      "Re-link the file from Configurations → Local.",
+    ],
     source: "Local FS",
     createdAt: "3m ago",
   },
@@ -29,6 +41,9 @@ const MOCK_ALERTS: AlertItem[] = [
     severity: "warning",
     title: "CONFIG VALUE MISSING",
     message: "A non-critical configuration value is missing. Defaults were applied.",
+    explanation: "A fallback value was used to keep the service running.",
+    technicalDetails: ["Key: telemetry.sample_rate", "Fallback: 0.2"],
+    remediationSteps: ["Review the config template", "Set a value in the Configurations tab"],
     source: "Config",
     createdAt: "12m ago",
   },
@@ -37,6 +52,9 @@ const MOCK_ALERTS: AlertItem[] = [
     severity: "info",
     title: "HEALTH CHECK OK",
     message: "Background health checks completed successfully.",
+    explanation: "All monitored services responded within the expected threshold.",
+    technicalDetails: ["Latency avg: 120ms", "Services checked: 6"],
+    remediationSteps: ["No action required"],
     source: "Monitor",
     createdAt: "1h ago",
   },
@@ -45,6 +63,7 @@ const MOCK_ALERTS: AlertItem[] = [
 export default function Alerts() {
   // Replace MOCK_ALERTS with real data later (Tauri invoke / backend / store)
   const [alerts, setAlerts] = useState<AlertItem[]>(MOCK_ALERTS);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const [query, setQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState<"all" | Severity>("all");
@@ -71,6 +90,15 @@ export default function Alerts() {
 
   function clearAll() {
     setAlerts([]);
+  }
+
+  function toggleExpanded(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   return (
@@ -141,7 +169,12 @@ export default function Alerts() {
             </thead>
             <tbody>
               {filtered.map((alert) => (
-                <AlertRow key={alert.id} alert={alert} />
+                <AlertRow
+                  key={alert.id}
+                  alert={alert}
+                  isExpanded={expandedIds.has(alert.id)}
+                  onToggle={() => toggleExpanded(alert.id)}
+                />
               ))}
             </tbody>
           </table>
@@ -151,37 +184,72 @@ export default function Alerts() {
   );
 }
 
-function AlertRow({ alert }: { alert: AlertItem }) {
+function AlertRow({
+  alert,
+  isExpanded,
+  onToggle,
+}: {
+  alert: AlertItem;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <tr id={alert.anchorId} data-severity={alert.severity}>
-      <td>
-        <span className={`alerts-badge alerts-badge-${alert.severity}`}>
-          {alert.severity.toUpperCase()}
-        </span>
-      </td>
-      <td>
-        <div className="alerts-title">{alert.title}</div>
-        <div className="alerts-message">{alert.message}</div>
-      </td>
-      <td className="alerts-muted">{alert.source ?? "—"}</td>
-      <td className="alerts-muted">{alert.createdAt}</td>
-      <td>
-        <div className="alerts-actions">
-          <button
-            className="alerts-button-ghost"
-            onClick={() => console.log("Open details:", alert.id)}
-          >
-            Details
-          </button>
-          <button
-            className="alerts-button-ghost"
-            onClick={() => console.log("Copy message:", alert.id)}
-          >
-            Copy
-          </button>
-        </div>
-      </td>
-    </tr>
+    <>
+      <tr id={alert.anchorId} data-severity={alert.severity}>
+        <td>
+          <span className={`alerts-badge alerts-badge-${alert.severity}`}>
+            {alert.severity.toUpperCase()}
+          </span>
+        </td>
+        <td>
+          <div className="alerts-title">{alert.title}</div>
+          <div className="alerts-message">{alert.message}</div>
+        </td>
+        <td className="alerts-muted">{alert.source ?? "—"}</td>
+        <td className="alerts-muted">{alert.createdAt}</td>
+        <td>
+          <div className="alerts-actions">
+            <button className="alerts-button-ghost" onClick={onToggle}>
+              {isExpanded ? "Hide" : "Details"}
+            </button>
+            <button
+              className="alerts-button-ghost"
+              onClick={() => console.log("Copy message:", alert.id)}
+            >
+              Copy
+            </button>
+          </div>
+        </td>
+      </tr>
+      {isExpanded ? (
+        <tr className="alerts-details-row">
+          <td colSpan={5}>
+            <div className="alerts-details">
+              <div className="alerts-details-block">
+                <div className="alerts-details-title">Why this happened</div>
+                <div className="alerts-details-text">{alert.explanation}</div>
+              </div>
+              <div className="alerts-details-block">
+                <div className="alerts-details-title">Technical details</div>
+                <ul className="alerts-details-list">
+                  {alert.technicalDetails.map((detail) => (
+                    <li key={detail}>{detail}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="alerts-details-block">
+                <div className="alerts-details-title">Remediation steps</div>
+                <ol className="alerts-details-list alerts-details-steps">
+                  {alert.remediationSteps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          </td>
+        </tr>
+      ) : null}
+    </>
   );
 }
 

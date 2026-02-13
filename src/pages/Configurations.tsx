@@ -5,7 +5,9 @@ type ConfigSection = {
   id: string;
   title: string;
   subtitle?: string;
+  mode: "editable" | "view-only";
   filesUsed: Record<string, string>;
+  synced: boolean;
 };
 
 const FILE_OPTIONS: Record<string, string[]> = {
@@ -27,6 +29,8 @@ const MOCK_SECTIONS: ConfigSection[] = [
     id: "local",
     title: "Local",
     subtitle: "Uses local dev credentials and paths.",
+    mode: "editable",
+    synced: true,
     filesUsed: {
       kubeconfig: "kubeconfig-local",
       gcs: "gcs-local",
@@ -36,6 +40,8 @@ const MOCK_SECTIONS: ConfigSection[] = [
     id: "dev",
     title: "Dev",
     subtitle: "Shared dev sandbox config.",
+    mode: "editable",
+    synced: false,
     filesUsed: {
       kubeconfig: "kubeconfig-dev",
       aws: "aws-dev",
@@ -46,6 +52,8 @@ const MOCK_SECTIONS: ConfigSection[] = [
     id: "stg",
     title: "Stg",
     subtitle: "Pre-prod staging configuration.",
+    mode: "view-only",
+    synced: true,
     filesUsed: {
       kubeconfig: "kubeconfig-stg",
       gcs: "gcs-stg",
@@ -57,25 +65,17 @@ const MOCK_SECTIONS: ConfigSection[] = [
 
 export default function Configuration() {
   const [sections, setSections] = useState<ConfigSection[]>(MOCK_SECTIONS);
-
-  const [open, setOpen] = useState<Record<string, boolean>>({
-    local: true,
-    dev: false,
-    stg: false,
-  });
+  const [activeId, setActiveId] = useState<string>(MOCK_SECTIONS[0]?.id ?? "");
 
   const original = useMemo(() => JSON.stringify(MOCK_SECTIONS), []);
   const current = useMemo(() => JSON.stringify(sections), [sections]);
   const isDirty = original !== current;
 
-  function toggleSection(id: string) {
-    setOpen((prev) => ({ ...prev, [id]: !prev[id] }));
-  }
-
   function setFileMapping(sectionId: string, key: string, value: string) {
     setSections((prev) =>
       prev.map((section) => {
         if (section.id !== sectionId) return section;
+        if (section.mode === "view-only") return section;
         return {
           ...section,
           filesUsed: { ...section.filesUsed, [key]: value },
@@ -86,12 +86,38 @@ export default function Configuration() {
 
   function resetAll() {
     setSections(MOCK_SECTIONS);
-    setOpen({ local: true, dev: false, stg: false });
+    setActiveId(MOCK_SECTIONS[0]?.id ?? "");
+  }
+
+  function addConfiguration() {
+    const id = `env-${Math.random().toString(16).slice(2, 8)}`;
+    const newSection: ConfigSection = {
+      id,
+      title: "New Environment",
+      subtitle: "Describe how this environment is used.",
+      mode: "editable",
+      synced: true,
+      filesUsed: {
+        kubeconfig: FILE_OPTIONS.kubeconfig[0],
+      },
+    };
+    setSections((prev) => [newSection, ...prev]);
+    setActiveId(id);
   }
 
   async function save() {
     console.log("Saving config:", sections);
   }
+
+  const activeSection = useMemo(
+    () => sections.find((section) => section.id === activeId) ?? sections[0],
+    [activeId, sections]
+  );
+
+  const unsyncedCount = useMemo(
+    () => sections.filter((section) => !section.synced).length,
+    [sections]
+  );
 
   return (
     <div className="page-shell config-page">
@@ -102,6 +128,9 @@ export default function Configuration() {
         </div>
 
         <div className="config-header-actions">
+          <button className="config-button" onClick={addConfiguration}>
+            Add configuration
+          </button>
           <button className="config-button" onClick={resetAll} disabled={!isDirty}>
             Reset
           </button>
@@ -111,74 +140,102 @@ export default function Configuration() {
         </div>
       </header>
 
-      <main className="config-list">
-        {sections.map((section) => {
-          const isOpen = !!open[section.id];
+      {unsyncedCount > 0 ? (
+        <div className="status-alert status-alert-warning">
+          {unsyncedCount} environment{unsyncedCount === 1 ? "" : "s"} not synced
+          with PC. Review status before editing.
+        </div>
+      ) : null}
 
-          return (
-            <section key={section.id} className="config-section">
+      <main className="config-tabs-layout">
+        <div className="config-tabs" role="tablist" aria-label="Configuration environments">
+          {sections.map((section) => {
+            const isActive = section.id === activeId;
+            return (
               <button
-                type="button"
-                className="config-section-header"
-                onClick={() => toggleSection(section.id)}
-                aria-expanded={isOpen}
+                key={section.id}
+                className={`config-tab ${isActive ? "config-tab-active" : ""}`}
+                onClick={() => setActiveId(section.id)}
+                role="tab"
+                aria-selected={isActive}
               >
-                <div className="config-section-header-left">
-                  <div className="config-section-header-text">
-                    <div className="config-section-title">{section.title}</div>
-                    {section.subtitle ? (
-                      <div className="config-section-subtitle">{section.subtitle}</div>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="config-section-header-right">
-                  <Chevron isOpen={isOpen} />
-                </div>
+                <span className="config-tab-title">
+                  {section.title}
+                  <span
+                    className={`config-sync ${
+                      section.synced ? "config-sync-ok" : "config-sync-alert"
+                    }`}
+                    aria-label={section.synced ? "Synced with PC" : "Not synced"}
+                    data-tooltip={section.synced ? "Synced with PC" : "Not synced"}
+                  >
+                    {section.synced ? "↻" : "!"}
+                  </span>
+                </span>
+                <span className="config-count-pill">
+                  {Object.keys(section.filesUsed).length}
+                </span>
+                <span
+                  className={`config-mode-badge config-mode-${section.mode}`}
+                >
+                  {section.mode === "view-only" ? "View-only" : "Editable"}
+                </span>
               </button>
+            );
+          })}
+        </div>
 
-              {isOpen ? (
-                <div className="config-section-body">
-                  <div className="config-files-title">Files in use</div>
-                  <div className="config-files-list">
-                    {Object.entries(section.filesUsed).map(([key, value]) => (
-                      <div key={key} className="config-files-item">
-                        <span className="config-files-label">{key}</span>
-                        <div className="config-files-value">
-                          <select
-                            className="config-files-select"
-                            value={value}
-                            onChange={(event) =>
-                              setFileMapping(section.id, key, event.target.value)
-                            }
-                          >
-                            {(FILE_OPTIONS[key] ?? [value]).map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    ))}
+        {activeSection ? (
+          <section className="config-panel" role="tabpanel">
+            <div className="config-panel-header">
+              <div>
+                <div className="config-section-title">{activeSection.title}</div>
+                {activeSection.subtitle ? (
+                  <div className="config-section-subtitle">{activeSection.subtitle}</div>
+                ) : null}
+              </div>
+              <span
+                className={`config-mode-badge config-mode-${activeSection.mode}`}
+              >
+                {activeSection.mode === "view-only" ? "View-only" : "Editable"}
+              </span>
+            </div>
+            <div className="config-mode-hint">
+              {activeSection.mode === "view-only"
+                ? "This environment is locked to prevent accidental changes."
+                : "Changes here will update the active mappings."}
+            </div>
+            <div className="config-files-title">Files in use</div>
+            <div className="config-files-list">
+              {Object.entries(activeSection.filesUsed).map(([key, value]) => (
+                <div
+                  key={key}
+                  className={`config-files-item ${
+                    activeSection.mode === "view-only" ? "is-readonly" : ""
+                  }`}
+                >
+                  <span className="config-files-label">{FILE_LABELS[key] ?? key}</span>
+                  <div className="config-files-value">
+                    <select
+                      className="config-files-select"
+                      value={value}
+                      disabled={activeSection.mode === "view-only"}
+                      onChange={(event) =>
+                        setFileMapping(activeSection.id, key, event.target.value)
+                      }
+                    >
+                      {(FILE_OPTIONS[key] ?? [value]).map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              ) : null}
-            </section>
-          );
-        })}
+              ))}
+            </div>
+          </section>
+        ) : null}
       </main>
     </div>
-  );
-}
-
-function Chevron({ isOpen }: { isOpen: boolean }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`config-chevron ${isOpen ? "config-chevron-open" : ""}`}
-    >
-      ›
-    </span>
   );
 }

@@ -1,3 +1,21 @@
+# Config Manager Desktop
+
+Low-fidelity UX prototype for a configuration manager desktop app.
+
+## Added in This Iteration
+
+- Dashboard summary box with inferred insights to reduce cognitive load.
+- Numeric indicators for pending and critical actions.
+- Quick dark/light theme toggle surfaced in the dashboard.
+- Alerts with expandable technical details and remediation steps.
+- Alerts terminology clarified ("item" → "source").
+- Configuration environments displayed as tabs for scalability.
+- Clear view-only vs editable badges and disabled controls.
+- Files linked to configurations with edit vs monitoring-only clarity.
+- Settings area uses a standard settings icon and sectioned preferences.
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

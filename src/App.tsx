@@ -32,14 +32,22 @@ function App() {
       <Sidebar
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen((value) => !value)}
-        title="Config Manager"
+        title="Confi"
         items={navigationItems}
         isLightMode={isLightMode}
         onToggleTheme={() => setIsLightMode((value) => !value)}
       />
       <main className="main-content">
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route
+            path="/"
+            element={
+              <Dashboard
+                isLightMode={isLightMode}
+                onToggleTheme={() => setIsLightMode((value) => !value)}
+              />
+            }
+          />
           <Route path="/configurations" element={<Configurations />} />
           <Route path="/files" element={<Files />} />
           <Route path="/alerts" element={<Alerts />} />
