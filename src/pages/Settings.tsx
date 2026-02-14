@@ -125,9 +125,9 @@ export default function Settings() {
         <div className="settings-section">
           <div className="settings-section-title">Security</div>
           <div className="settings-row">
-            <div className="settings-row-label">Reset secrets</div>
+            <div className="settings-row-label">Reset files</div>
             <button className="settings-button settings-button-danger" onClick={resetAllSecrets}>
-              Reset all secrets
+              Reset all files
             </button>
           </div>
         </div>
