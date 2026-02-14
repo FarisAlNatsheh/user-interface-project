@@ -32,7 +32,7 @@ function App() {
       <Sidebar
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen((value) => !value)}
-        title="Confi"
+        title="Confily"
         items={navigationItems}
         isLightMode={isLightMode}
         onToggleTheme={() => setIsLightMode((value) => !value)}

@@ -244,10 +244,11 @@ export default function Files() {
                               className={`files-sync ${
                                 f.synced ? "files-sync-ok" : "files-sync-alert"
                               }`}
-                              aria-label={f.synced ? "Synced with PC" : "Not synced"}
-                              data-tooltip={f.synced ? "Synced with PC" : "Not synced"}
                             >
                               {f.synced ? "↻" : "!"}
+                              <span className="files-sync-text">
+                                {f.synced ? "Synced" : "Not synced"}
+                              </span>
                             </span>
                           </span>
                         </td>
@@ -310,6 +311,9 @@ export default function Files() {
         </section>
 
         <div className="files-actions">
+          <button className="files-button files-button-primary" onClick={addFile}>
+            Add
+          </button>
           <button
             className="files-button"
             onClick={editSelected}
@@ -319,9 +323,6 @@ export default function Files() {
           </button>
           <button className="files-button" onClick={deleteSelected} disabled={!selected}>
             Delete
-          </button>
-          <button className="files-button files-button-primary" onClick={addFile}>
-            Add
           </button>
         </div>
       </div>

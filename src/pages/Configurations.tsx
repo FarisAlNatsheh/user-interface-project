@@ -165,10 +165,11 @@ export default function Configuration() {
                     className={`config-sync ${
                       section.synced ? "config-sync-ok" : "config-sync-alert"
                     }`}
-                    aria-label={section.synced ? "Synced with PC" : "Not synced"}
-                    data-tooltip={section.synced ? "Synced with PC" : "Not synced"}
                   >
                     {section.synced ? "↻" : "!"}
+                    <span className="config-sync-text">
+                      {section.synced ? "Synced" : "Not synced"}
+                    </span>
                   </span>
                 </span>
                 <span className="config-count-pill">
